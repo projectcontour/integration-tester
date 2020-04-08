@@ -1,2 +1,1 @@
-# integration-tester
-Integration Tester for Kubernetes
+# Integration Tester for Kubernetes
