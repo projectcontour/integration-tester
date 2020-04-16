@@ -1,5 +1,7 @@
 # Integration Tester for Kubernetes
 
+[![Test](https://github.com/projectcontour/integration-tester/workflows/Test/badge.svg)](https://github.com/projectcontour/integration-tester/actions?query=workflow%3ATest)
+
 Integration Tester for Kubernetes is a test driver that helps run
 integration tests for Kubernetes controllers.
 
