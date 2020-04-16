@@ -58,14 +58,16 @@ pkg/builtin/assets.go: $(wildcard pkg/builtin/*.rego) $(wildcard pkg/builtin/*.y
 
 .PHONY: check
 check: ## Run tests
-check: generate check-tests check-lint
+check: check-tests check-lint
 
 .PHONY: check-tests
 check-tests: ## Run tests
+check-tests: generate
 	@$(GO) test -cover -v ./...
 
 .PHONY: check-lint
 check-lint: ## Run linters
+check-lint: generate
 	@if command -v golangci-lint > /dev/null 2>&1 ; then \
 		golangci-lint run --exclude-use-default=false ; \
 	else \
