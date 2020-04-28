@@ -113,7 +113,7 @@ creates the stub and will update its copy when it changes.
 ## Skipping tests
 
 If there is a skip rule (any rule whose name begins with the string
-"skip"), `integration-tester` will evaluate is for any results. If the
+"skip"), `integration-tester` will evaluate it for any results. If the
 skip rule has any results, the test will be skipped. This means that no
 subsequent test steps will be performed, but the test as a whole will
 not be considered failed.
