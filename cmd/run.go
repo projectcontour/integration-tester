@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -135,6 +136,9 @@ func runCmd(cmd *cobra.Command, args []string) error {
 			must.String(cmd.Flags().GetString("format")))
 	}
 
+	summary := &test.SummaryWriter{}
+	recorder = test.StackRecorders(summary, recorder)
+
 	opts := []test.RunOpt{
 		test.KubeClientOpt(kube),
 		test.RecorderOpt(recorder),
@@ -196,6 +200,13 @@ func runCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		docCloser.Close()
+	}
+
+	// Only summarize when we run more than one test document.
+	// If we are just running a single test, the summary looks
+	// less like a summary and more like a left-over log line.
+	if len(args) > 1 {
+		summary.Summarize(os.Stdout)
 	}
 
 	if recorder.Failed() {
