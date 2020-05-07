@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/magiconair/properties v1.8.0
-	github.com/open-policy-agent/opa v0.19.0-rc1
+	github.com/open-policy-agent/opa v0.19.2
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify v1.4.0
@@ -21,5 +21,3 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.0.11
 	sigs.k8s.io/yaml v1.1.0
 )
-
-replace github.com/open-policy-agent/opa => github.com/jpeach/opa v0.19.0-jpeach.1
