@@ -195,6 +195,9 @@ func Run(testDoc *doc.Document, opts ...RunOpt) error {
 	tc.regoDriver.StoreItem("/test/params/run-id", tc.envDriver.UniqueID())
 
 	step(tc.recorder, "compiling test document", func() {
+		tc.recorder.Update(
+			result.Infof("test run ID is %s", tc.envDriver.UniqueID()))
+
 		compiler, err = compileDocument(testDoc, tc.policyModules)
 		if err != nil {
 			tc.recorder.Update(result.Fatalf("%s", err.Error()))
@@ -394,8 +397,14 @@ func Run(testDoc *doc.Document, opts ...RunOpt) error {
 		}
 	}
 
-	if !tc.preserve {
-		must.Must(tc.objectDriver.DeleteAll())
+	if tc.preserve {
+		step(tc.recorder, "preserving test objects", func() {})
+	} else {
+		step(tc.recorder, "deleting test objects", func() {
+			if err := tc.objectDriver.DeleteAll(); err != nil {
+				tc.recorder.Update(result.Fatalf("object deletion failed: %s", err))
+			}
+		})
 	}
 
 	// TODO(jpeach): return a structured test result object.
