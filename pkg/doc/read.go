@@ -105,7 +105,7 @@ func ReadFile(filePath string) (*Document, error) {
 		return nil, err
 	}
 
-	defer fh.Close()
+	defer fh.Close() // nolint:gosec
 
 	doc, err := ReadDocument(fh)
 	if err != nil {

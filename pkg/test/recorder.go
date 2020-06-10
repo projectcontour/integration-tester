@@ -34,6 +34,7 @@ type Document struct {
 func (d *Document) EachResult(f func(*Step, *result.Result)) {
 	for _, s := range d.Steps {
 		for _, r := range s.Results {
+			r := r
 			f(s, &r)
 		}
 	}
