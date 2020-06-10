@@ -346,7 +346,14 @@ func (o *objectDriver) Delete(obj *unstructured.Unstructured) (*OperationResult,
 	}
 	o.objectLock.Unlock()
 
-	opts := utils.ImmediateDeletionOptions()
+	opts := utils.ImmediateDeletionOptions(metav1.DeletePropagationForeground)
+
+	// Services need to be deleted in the background, see
+	//	https://github.com/kubernetes/kubernetes/issues/87603
+	//	https://github.com/kubernetes/kubernetes/issues/90512
+	if obj.GetKind() == "Service" {
+		opts = utils.ImmediateDeletionOptions(metav1.DeletePropagationBackground)
+	}
 
 	if isNamespaced {
 		err = o.kube.Dynamic.Resource(gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), opts)
@@ -405,38 +412,51 @@ func (o *objectDriver) Adopt(obj *unstructured.Unstructured) error {
 }
 
 func (o *objectDriver) DeleteAll() error {
-	targets := make([]*unstructured.Unstructured, 0, len(o.objectPool))
-	var errs []error
+	for {
+		var errs []error
+		targets := make([]*unstructured.Unstructured, 0, len(o.objectPool))
 
-	o.objectLock.Lock()
-	for _, u := range o.objectPool {
-		targets = append(targets, u.DeepCopy())
-	}
-	o.objectLock.Unlock()
+		o.objectLock.Lock()
+		for _, u := range o.objectPool {
+			targets = append(targets, u.DeepCopy())
+		}
+		o.objectLock.Unlock()
 
-	for _, u := range targets {
-		result, err := o.Delete(u)
-
-		if err != nil {
-			errs = append(errs, err)
-			continue
+		if len(targets) == 0 {
+			return nil
 		}
 
-		if result.Error != nil {
-			// Re-wrap the error that we unwrapped for status!
-			errs = append(errs, &apierrors.StatusError{
-				ErrStatus: *result.Error,
-			})
+		for _, u := range targets {
+			result, err := o.Delete(u)
 
-			continue
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
+			if result.Error != nil {
+				switch result.Error.Reason {
+				case metav1.StatusReasonNotFound, metav1.StatusReasonGone:
+					// If the deletion failed because the target wasn't there, then the object
+					// pool won't get updated by the informer callback. We have to update it here.
+					o.objectLock.Lock()
+					delete(o.objectPool, u.GetUID())
+					o.objectLock.Unlock()
+				default:
+					// Re-wrap the error that we unwrapped for status!
+					errs = append(errs, &apierrors.StatusError{
+						ErrStatus: *result.Error,
+					})
+					continue
+				}
+			}
 		}
+
+		if len(errs) != 0 {
+			errs = append([]error{errors.New("failed to delete all objects")}, errs...)
+			return utils.ChainErrors(errs...)
+		}
+
+		time.Sleep(time.Second)
 	}
-
-	if len(errs) == 0 {
-		return nil
-	}
-
-	errs = append([]error{errors.New("failed to delete all objects")}, errs...)
-
-	return utils.ChainErrors(errs...)
 }
