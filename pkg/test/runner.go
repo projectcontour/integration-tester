@@ -386,8 +386,8 @@ func Run(testDoc *doc.Document, opts ...RunOpt) error {
 					tc.recorder.Update(checkResults...)
 				})
 
-		case doc.FragmentTypeUnknown:
-			// Ignore unknown fragments.
+		case doc.FragmentTypeUnknown, doc.FragmentTypeEmpty:
+			// Ignore unknown and empty fragments.
 
 		case doc.FragmentTypeInvalid:
 			// XXX(jpeach): We can't get here because

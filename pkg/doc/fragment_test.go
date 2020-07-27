@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// nolint(gocognit)
 func TestParseFragment(t *testing.T) {
 	type testcase struct {
 		Data string
@@ -68,6 +69,13 @@ func TestParseFragment(t *testing.T) {
 				}
 				if f.Rego() == nil {
 					t.Errorf("nil module for rego fragment")
+				}
+			case FragmentTypeEmpty:
+				if f.Object() != nil {
+					t.Errorf("non-nil object for empty fragment")
+				}
+				if f.Rego() != nil {
+					t.Errorf("non-nil module for empty fragment")
 				}
 			default:
 				t.Errorf("invalid fragment type %d", fragType)
@@ -127,5 +135,14 @@ metadata:
 	run(t, "Rego rule", testcase{
 		Data: `t { x := 42; y := 41; x > y }`,
 		Want: FragmentTypeModule,
+	})
+
+	run(t, "Empty fragment", testcase{
+		Data: `
+# commented: out
+# yaml: foo
+
+`,
+		Want: FragmentTypeEmpty,
 	})
 }
