@@ -16,6 +16,7 @@ package doc
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 
@@ -38,6 +39,10 @@ const (
 	FragmentTypeObject
 	// FragmentTypeModule indicates this Fragment contains a Rego module.
 	FragmentTypeModule
+	// FragmentTypeEmpty indicates this is an empty fragment.
+	// Empty fragments decode as an empty YAML document and typically
+	// result from the user commenting out a chunk of YAML.
+	FragmentTypeEmpty
 )
 
 var _ error = &InvalidFragmentErr{}
@@ -65,6 +70,8 @@ func (t FragmentType) String() string {
 		return "Rego"
 	case FragmentTypeInvalid:
 		return "invalid"
+	case FragmentTypeEmpty:
+		return "empty"
 	default:
 		return "unknown"
 	}
@@ -118,6 +125,22 @@ func hasKindVersion(u *unstructured.Unstructured) bool {
 	return len(k.Version) > 0 && len(k.Kind) > 0
 }
 
+func decodeEmpty(data []byte) error {
+	buffer := bytes.NewReader(data)
+	decoder := yaml.NewYAMLOrJSONDecoder(buffer, buffer.Len())
+
+	into := map[string]interface{}{}
+	if err := decoder.Decode(&into); err != nil {
+		return err
+	}
+
+	if len(into) == 0 {
+		return nil
+	}
+
+	return errors.New("fragment is not empty YAML")
+}
+
 func decodeYAMLOrJSON(data []byte) (*unstructured.Unstructured, error) {
 	buffer := bytes.NewReader(data)
 	decoder := yaml.NewYAMLOrJSONDecoder(buffer, buffer.Len())
@@ -161,6 +184,14 @@ func (f *Fragment) Decode() (FragmentType, error) {
 		if hasKindVersion(u) {
 			f.Type = FragmentTypeObject
 			f.object = u
+			return f.Type, nil
+		}
+
+		// If it decoded as an empty YAML doc, that's OK.
+		// This improves the ergonomics of commenting out YAML
+		// chunks.
+		if err := decodeEmpty(f.Bytes); err == nil {
+			f.Type = FragmentTypeEmpty
 			return f.Type, nil
 		}
 
