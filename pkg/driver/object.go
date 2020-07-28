@@ -73,6 +73,10 @@ type ObjectDriver interface {
 	// watchers.
 	InformOn(gvr schema.GroupVersionResource) error
 
+	// WaitForCacheSync waits until all the informers created
+	// by the driver have synced.
+	WaitForCacheSync(timeout time.Duration) error
+
 	// Watch registers an event handler to receive events from
 	// all the informers managed by the driver.
 	Watch(cache.ResourceEventHandler) func()
@@ -213,6 +217,24 @@ func (o *objectDriver) InformOn(gvr schema.GroupVersionResource) error {
 	go func() {
 		genericInformer.Informer().Run(o.informerStopper)
 	}()
+
+	return nil
+}
+
+func (o *objectDriver) WaitForCacheSync(timeout time.Duration) error {
+	var synced []cache.InformerSynced
+
+	for _, i := range o.informerPool {
+		synced = append(synced, i.Informer().HasSynced)
+	}
+
+	stopChan := make(chan struct{})
+	timer := time.AfterFunc(timeout, func() { close(stopChan) })
+	defer timer.Stop()
+
+	if !cache.WaitForCacheSync(stopChan, synced...) {
+		return errors.New("informer cache sync timed out")
+	}
 
 	return nil
 }

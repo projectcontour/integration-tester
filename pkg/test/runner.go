@@ -92,14 +92,14 @@ func PreserveObjectsOpt() RunOpt {
 	})
 }
 
-// WatchResourceOpt disables automatic object deletion.
+// WatchResourceOpt adds an explicit informer for the given resource.
 func WatchResourceOpt(gvr schema.GroupVersionResource) RunOpt {
 	return RunOpt(func(tc *testContext) {
 		tc.watchedResources = append(tc.watchedResources, gvr)
 	})
 }
 
-// DryRunOpt enables Kuberentes dry-run mode (TODO).
+// DryRunOpt enables Kubernetes dry-run mode (TODO).
 func DryRunOpt() RunOpt {
 	return RunOpt(func(tc *testContext) {
 		tc.dryRun = true
@@ -186,6 +186,13 @@ func Run(testDoc *doc.Document, opts ...RunOpt) error {
 
 	for _, gvr := range tc.watchedResources {
 		tc.objectDriver.InformOn(gvr)
+	}
+
+	// Let the informers sync. For most environments, this
+	// timeout is far too long. Eventually we can make it a flag
+	// to tune it down.
+	if err := tc.objectDriver.WaitForCacheSync(5 * time.Minute); err != nil {
+		return err
 	}
 
 	if err := storeResourceVersions(tc.kubeDriver, tc.regoDriver); err != nil {
