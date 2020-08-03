@@ -35,6 +35,7 @@ type Document struct {
 // YAML document separator (see https://yaml.org/spec/1.0/#id2561718).
 // The contents of each Fragment is opaque and need not be YAML.
 func ReadDocument(in io.Reader) (*Document, error) {
+	filename := ""
 	startLine := 0
 	currentLine := 0
 
@@ -44,6 +45,10 @@ func ReadDocument(in io.Reader) (*Document, error) {
 	doc := Document{}
 
 	scanner := bufio.NewScanner(in)
+
+	if f, ok := in.(*os.File); ok {
+		filename = f.Name()
+	}
 
 	// Scan the input a line at a time.
 	for scanner.Scan() {
@@ -66,8 +71,9 @@ func ReadDocument(in io.Reader) (*Document, error) {
 				doc.Parts = append(doc.Parts, Fragment{
 					Bytes: utils.CopyBytes(buf.Bytes()),
 					Location: Location{
-						Start: startLine,
-						End:   currentLine - 1,
+						Filename: filename,
+						Start:    startLine,
+						End:      currentLine - 1,
 					},
 				})
 			}
@@ -85,8 +91,9 @@ func ReadDocument(in io.Reader) (*Document, error) {
 		doc.Parts = append(doc.Parts, Fragment{
 			Bytes: utils.CopyBytes(buf.Bytes()),
 			Location: Location{
-				Start: startLine,
-				End:   currentLine,
+				Filename: filename,
+				Start:    startLine,
+				End:      currentLine,
 			},
 		})
 	}

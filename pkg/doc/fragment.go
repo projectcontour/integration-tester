@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/projectcontour/integration-tester/pkg/utils"
 
@@ -79,6 +78,10 @@ func (t FragmentType) String() string {
 
 // Location tracks the lines that bound a Fragment within some larger Document.
 type Location struct {
+	// Filename is the name of the file this Fragment was read from
+	// (if that is known by the fragment reader).
+	Filename string
+
 	// Start is the line number this location starts on.
 	Start int
 
@@ -87,6 +90,10 @@ type Location struct {
 }
 
 func (l Location) String() string {
+	if l.Filename != "" {
+		return fmt.Sprintf("%s:%d-%d", l.Filename, l.Start, l.End)
+	}
+
 	return fmt.Sprintf("%d-%d", l.Start, l.End)
 }
 
@@ -153,20 +160,6 @@ func decodeYAMLOrJSON(data []byte) (*unstructured.Unstructured, error) {
 	return &unstructured.Unstructured{Object: into}, nil
 }
 
-func decodeModule(data []byte) (*ast.Module, error) {
-	m, err := utils.ParseCheckFragment(string(data))
-	if err != nil {
-		return nil, err
-	}
-
-	// ParseModule can return nil with no error (empty module).
-	if m == nil {
-		return nil, io.EOF
-	}
-
-	return m, nil
-}
-
 // IsDecoded returns whether this fragment has been decoded to a known fragment type.
 func (f *Fragment) IsDecoded() bool {
 	switch f.Type {
@@ -208,7 +201,7 @@ func (f *Fragment) Decode() (FragmentType, error) {
 	// Since we do want to propagate errors so that users can debug
 	// scripts, we have to assume this is meant to be Rego.
 
-	m, err := decodeModule(f.Bytes)
+	m, err := utils.ParseCheckFragment(f.Location.String(), string(f.Bytes))
 	if err != nil {
 		return FragmentTypeInvalid,
 			utils.ChainErrors(

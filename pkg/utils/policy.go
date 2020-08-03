@@ -43,15 +43,20 @@ func ParseModuleFile(filePath string) (*ast.Module, error) {
 // Rego input is assumed to not have a package declaration so a random
 // package name is prepended to make the parsed module globally unique.
 // ParseCheckFragment can return nil with no error if the input is empty.
-func ParseCheckFragment(input string) (*ast.Module, error) {
+// If the filename parameter is empty, an internal name will be generated.
+func ParseCheckFragment(filename string, input string) (*ast.Module, error) {
 	// Rego requires a package name to generate any Rules.  Force
 	// a package name that is unique to the fragment.  Note that
 	// we also use this to generate a unique filename placeholder
 	// since Rego internals will sometime use this as a map key.
 	moduleName := RandomStringN(12)
 
+	if filename == "" {
+		filename = fmt.Sprintf("internal/check/%s", moduleName)
+	}
+
 	m, err := ast.ParseModule(
-		fmt.Sprintf("internal/check/%s", moduleName),
+		filename,
 		fmt.Sprintf("package check.%s\n%s", moduleName, input))
 	if err != nil {
 		return nil, err
