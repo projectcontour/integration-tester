@@ -628,5 +628,17 @@ func removeResource(k *driver.KubeClient, c driver.RegoDriver, u *unstructured.U
 		return err
 	}
 
-	return c.RemovePath(pathForResource(gvr.Resource, u))
+	// We don't care if the path we wanted to remove wasn't found,
+	// as long as it's not there when we are done. We can end up
+	// receiving multiple delete events for the same object, which
+	// can attempt to remove the same path again.
+	return ignoreStorageNotFoundErr(c.RemovePath(pathForResource(gvr.Resource, u)))
+}
+
+func ignoreStorageNotFoundErr(err error) error {
+	if storage.IsNotFound(err) {
+		return nil
+	}
+
+	return err
 }
