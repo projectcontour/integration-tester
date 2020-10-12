@@ -15,6 +15,7 @@
 package driver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -268,9 +269,11 @@ func (o *objectDriver) Apply(obj *unstructured.Unstructured) (*OperationResult, 
 	var latest *unstructured.Unstructured
 
 	if isNamespaced {
-		latest, err = o.kube.Dynamic.Resource(gvr).Namespace(obj.GetNamespace()).Create(obj, metav1.CreateOptions{})
+		latest, err = o.kube.Dynamic.Resource(gvr).Namespace(obj.GetNamespace()).Create(
+			context.Background(), obj, metav1.CreateOptions{})
 	} else {
-		latest, err = o.kube.Dynamic.Resource(gvr).Create(obj, metav1.CreateOptions{})
+		latest, err = o.kube.Dynamic.Resource(gvr).Create(
+			context.Background(), obj, metav1.CreateOptions{})
 	}
 
 	// If the create was against an object that already existed,
@@ -290,9 +293,11 @@ func (o *objectDriver) Apply(obj *unstructured.Unstructured) (*OperationResult, 
 		}
 
 		if isNamespaced {
-			latest, err = o.kube.Dynamic.Resource(gvr).Namespace(obj.GetNamespace()).Patch(name, ptype, data, opt)
+			latest, err = o.kube.Dynamic.Resource(gvr).Namespace(obj.GetNamespace()).Patch(
+				context.Background(), name, ptype, data, opt)
 		} else {
-			latest, err = o.kube.Dynamic.Resource(gvr).Patch(name, ptype, data, opt)
+			latest, err = o.kube.Dynamic.Resource(gvr).Patch(
+				context.Background(), name, ptype, data, opt)
 		}
 	}
 
@@ -378,9 +383,11 @@ func (o *objectDriver) Delete(obj *unstructured.Unstructured) (*OperationResult,
 	}
 
 	if isNamespaced {
-		err = o.kube.Dynamic.Resource(gvr).Namespace(obj.GetNamespace()).Delete(obj.GetName(), opts)
+		err = o.kube.Dynamic.Resource(gvr).Namespace(obj.GetNamespace()).Delete(
+			context.Background(), obj.GetName(), opts)
 	} else {
-		err = o.kube.Dynamic.Resource(gvr).Delete(obj.GetName(), opts)
+		err = o.kube.Dynamic.Resource(gvr).Delete(
+			context.Background(), obj.GetName(), opts)
 	}
 
 	switch err {
