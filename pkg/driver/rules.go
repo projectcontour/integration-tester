@@ -33,6 +33,7 @@ var rules = []ruleInfo{
 	{name: "error", prefix: "error_", severity: result.SeverityError},
 	{name: "fatal", prefix: "fatal_", severity: result.SeverityFatal},
 	{name: "skip", prefix: "skip_", severity: result.SeveritySkip},
+	{name: "check", prefix: "check_", severity: result.SeverityNone},
 }
 
 // matchRuleByName finds the ruleInfo that matches the given query
@@ -77,11 +78,13 @@ func findAssertionRules(m *ast.Module) []string {
 	for _, rule := range m.Rules {
 		name := rule.Head.Name.String()
 
-		if severityForRuleName(name) == result.SeverityNone {
-			continue
+		switch {
+		case name == "check" || strings.HasPrefix(name, "check_"):
+			found[name] = struct{}{}
+		case severityForRuleName(name) != result.SeverityNone:
+			found[name] = struct{}{}
 		}
 
-		found[name] = struct{}{}
 	}
 
 	// Flatten query names back into the slice.

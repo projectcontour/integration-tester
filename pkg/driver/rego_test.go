@@ -50,8 +50,8 @@ func parse(t *testing.T, text string) (*ast.Module, RegoOpt) {
 func TestQueryNoResult(t *testing.T) {
 	r := NewRegoDriver()
 
-	results, err := r.Eval(parse(t,
-		` package test
+	results, err := r.Eval(parse(t, `
+package test
 
 foo := true
 
@@ -69,8 +69,8 @@ fatal[msg] { input.bar; msg = "this is the fatal error"}
 func TestQueryStringResult(t *testing.T) {
 	r := NewRegoDriver()
 
-	results, err := r.Eval(parse(t,
-		` package test
+	results, err := r.Eval(parse(t, `
+package test
 
 error[msg] { msg = "this is the error"}
 error[msg] { msg = "this is the second error"}
@@ -84,6 +84,11 @@ fatal[msg] { msg = "this is the fatal error"}
 		Message: utils.JoinLines(
 			"raised predicate \"error\"",
 			"this is the error",
+		),
+	}, {
+		Severity: result.SeverityError,
+		Message: utils.JoinLines(
+			"raised predicate \"error\"",
 			"this is the second error",
 		),
 	}, {
@@ -99,8 +104,8 @@ fatal[msg] { msg = "this is the fatal error"}
 func TestQueryMapResult(t *testing.T) {
 	r := NewRegoDriver()
 
-	results, err := r.Eval(parse(t,
-		` package test
+	results, err := r.Eval(parse(t, `
+package test
 
 error [{"msg": msg, "foo": "bar"}] { msg = "this is the nested error"}
 `))
@@ -120,8 +125,8 @@ error [{"msg": msg, "foo": "bar"}] { msg = "this is the nested error"}
 func TestQueryBoolResult(t *testing.T) {
 	r := NewRegoDriver()
 
-	results, err := r.Eval(parse(t,
-		` package test
+	results, err := r.Eval(parse(t, `
+package test
 
 error  { msg = "this error doesn't appear"}
 `))
@@ -139,8 +144,8 @@ error  { msg = "this error doesn't appear"}
 func TestQueryStringSliceResult(t *testing.T) {
 	r := NewRegoDriver()
 
-	results, err := r.Eval(parse(t,
-		` package test
+	results, err := r.Eval(parse(t, `
+package test
 
 error [msg] {
   msg := [
@@ -166,6 +171,11 @@ error [msg] {
 			"raised predicate \"error\"",
 			"message one",
 			"message two",
+		),
+	}, {
+		Severity: result.SeverityError,
+		Message: utils.JoinLines(
+			"raised predicate \"error\"",
 			"message three",
 			"message four",
 		),
@@ -177,8 +187,8 @@ error [msg] {
 func TestQueryUntypedResult(t *testing.T) {
 	r := NewRegoDriver()
 
-	results, err := r.Eval(parse(t,
-		` package foo
+	results, err := r.Eval(parse(t, `
+package foo
 
 sites := [
     {"count": 1},
@@ -193,11 +203,79 @@ error[num] { num := sites[_].count }
 
 	expected := []result.Result{{
 		Severity: result.SeverityError,
-		Message:  "raised predicate \"error\"",
+		Message: utils.JoinLines(
+			"raised predicate \"error\"",
+			"unhandled result value type 'json.Number'",
+			"1\n", // Trailing newline because YAML.
+		),
+	}, {
+		Severity: result.SeverityError,
+		Message: utils.JoinLines(
+			"raised predicate \"error\"",
+			"unhandled result value type 'json.Number'",
+			"2\n", // Trailing newline because YAML.
+		),
+	}, {
+		Severity: result.SeverityError,
+		Message: utils.JoinLines(
+			"raised predicate \"error\"",
+			"unhandled result value type 'json.Number'",
+			"3\n", // Trailing newline because YAML.
+		),
 	}}
 
-	// We expect no additional results containing 'num' because
-	// the type of the result will be []int, which is not supported.
+	assert.ElementsMatch(t, expected, results)
+}
+
+func TestQueryResultResult(t *testing.T) {
+	r := NewRegoDriver()
+
+	results, err := r.Eval(parse(t, `
+package foo
+
+check[result] {
+    result := {
+	"result": "Skip",
+	"msg": "skipped message here",
+    }
+}
+
+check_something_else[result] {
+    result := {
+        "result": "Error",
+        "msg": "error message here",
+    }
+}
+
+check_something_else[result] {
+    result := {
+        "result": "Pass",
+        "msg": "this check passed",
+    }
+}
+`))
+
+	require.NoError(t, err)
+
+	expected := []result.Result{{
+		Severity: result.SeveritySkip,
+		Message: utils.JoinLines(
+			"raised predicate \"check\"",
+			"skipped message here",
+		),
+	}, {
+		Severity: result.SeverityError,
+		Message: utils.JoinLines(
+			"raised predicate \"check_something_else\"",
+			"error message here",
+		),
+	}, {
+		Severity: result.SeverityPass,
+		Message: utils.JoinLines(
+			"raised predicate \"check_something_else\"",
+			"this check passed"),
+	}}
+
 	assert.ElementsMatch(t, expected, results)
 }
 

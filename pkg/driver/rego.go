@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 
 	"github.com/projectcontour/integration-tester/pkg/must"
@@ -241,10 +240,8 @@ func (r *regoDriver) Eval(m *ast.Module, opts ...RegoOpt) ([]result.Result, erro
 		// In each result, the Text is the expression that we
 		// queried, and value is one or more bound messages.
 		for _, r := range resultSet {
-			for _, e := range r.Expressions {
-				if r := extractResult(e); r != nil {
-					checkResults = append(checkResults, *r)
-				}
+			for _, expr := range r.Expressions {
+				checkResults = append(checkResults, extractResult(expr)...)
 			}
 		}
 
@@ -266,79 +263,112 @@ func (r *regoDriver) Eval(m *ast.Module, opts ...RegoOpt) ([]result.Result, erro
 // "msg". In the future, we could accept other types, but
 //
 // See also https://github.com/instrumenta/conftest/pull/243.
-func extractResult(expr *rego.ExpressionValue) *result.Result {
-	res := result.Result{
-		Severity: severityForRuleName(expr.Text),
-		Message:  fmt.Sprintf("raised predicate %q", expr.Text),
-	}
+func extractResult(expr *rego.ExpressionValue) []result.Result {
+	var results []result.Result
 
 	switch value := expr.Value.(type) {
-	case bool:
-		// This might be a boolean if the rule was this:
-		//	`error { ... }`
-		//
-		// Rego only returns the results of boolean rules
-		// if the rule was true, so the value of the bool
-		// result doesn't matter. We just know there's no
-		// message.
-		return &res
-
-	case string:
-		// This might be a string if the rule was this:
-		//	`error = msg {
-		//	 	...
-		//		msg := "this is a failing thing"
-		//	}`
-		//
-		res.Message = utils.JoinLines(res.Message, value)
-		return &res
-
 	case []interface{}:
-		// Extract messages from the value slice. The reason there is
-		// a slice is that there can be many matching cases for this
-		// rule and the query evaluates them all simultaneously. Each
-		// matching case might emit a message.
-
-		if len(value) == 0 {
-			return nil
-		}
-
 		for _, v := range value {
-			// First, see if the value is a slice of strings. We
-			// do this manually, because there's not enough type
-			// information for the `[]string` case to match below.
-			if s, ok := utils.AsStringSlice(v); ok {
-				res.Message = utils.JoinLines(res.Message,
-					utils.JoinLines(s...))
-				continue
-			}
-
-			switch value := v.(type) {
-			case string:
-				res.Message = utils.JoinLines(res.Message, value)
-			case []string:
-				res.Message = utils.JoinLines(res.Message,
-					utils.JoinLines(value...))
-			case map[string]interface{}:
-				if _, ok := value["msg"]; ok {
-					if m, ok := value["msg"].(string); ok {
-						res.Message = utils.JoinLines(res.Message, m)
-					}
-				}
-			default:
-				log.Printf("slice value of non-string %T: %v", value, value)
-			}
+			results = append(results,
+				extractOneResult(severityForRuleName(expr.Text), v),
+			)
 		}
-
-		return &res
 
 	default:
-		// We don't know how to deal with this kind of result, so just puke it out as YAML.
-		res.Message = utils.JoinLines(res.Message,
-			fmt.Sprintf("unhandled result value type '%T'", expr.Value),
-			string(must.Bytes(yaml.Marshal(expr.Value))),
+		results = append(results,
+			extractOneResult(severityForRuleName(expr.Text), value),
 		)
+	}
 
-		return &res
+	// Prefix any results with the name of the query predicate that emitted them.
+	for i := range results {
+		prefix := fmt.Sprintf("raised predicate %q", expr.Text)
+		if results[i].Message == "" {
+			results[i].Message = prefix
+		} else {
+			results[i].Message = utils.JoinLines(prefix, results[i].Message)
+		}
+	}
+
+	return results
+}
+
+func extractOneResult(severity result.Severity, v interface{}) result.Result {
+	// If this is a []string, then we have the result already.
+	if s, ok := utils.AsStringSlice(v); ok {
+		return result.Result{
+			Severity: severity,
+			Message:  utils.JoinLines(s...),
+		}
+	}
+
+	switch value := v.(type) {
+	// This might be a boolean if the rule was this:
+	//	`error { ... }`
+	//
+	// Rego only returns the results of boolean rules
+	// if the rule was true, so the value of the bool
+	// result doesn't matter. We just know there's no
+	// message.
+	case bool:
+		return result.Result{
+			Severity: severity,
+		}
+
+	// This might be a string if the rule was this:
+	//	`error = msg {
+	//	 	...
+	//		msg := "this is a failing thing"
+	//	}`
+	case string:
+		return result.Result{
+			Severity: severity,
+			Message:  value,
+		}
+
+	// This might be a string if the rule was this:
+	//	`error = { "msg": msg} {
+	//	 	...
+	//		msg := "this is a failing thing"
+	//	}`
+	// or
+	//	`error = { "msg": msg, "result": "Error"} {
+	//	 	...
+	//		msg := "this is a failing thing"
+	//	}`
+	case map[string]interface{}:
+		res := result.Result{
+			Severity: severity,
+		}
+
+		if _, ok := value["msg"]; ok {
+			if m, ok := value["msg"].(string); ok {
+				res.Message = m
+			}
+		}
+
+		if _, ok := value["result"]; ok {
+			if r, ok := value["result"].(string); ok {
+				switch result.Severity(r) {
+				case result.SeverityError,
+					result.SeverityFatal,
+					result.SeveritySkip,
+					result.SeverityPass:
+					res.Severity = result.Severity(r)
+				}
+			}
+		}
+
+		return res
+
+		// We don't know how to deal with this kind of result, so just puke it out as YAML.
+	default:
+		return result.Result{
+			Severity: severity,
+			Message: utils.JoinLines(
+				fmt.Sprintf("unhandled result value type '%T'", v),
+				string(must.Bytes(yaml.Marshal(v))),
+			),
+		}
 	}
 }
