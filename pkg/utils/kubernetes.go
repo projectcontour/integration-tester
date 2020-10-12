@@ -26,8 +26,8 @@ import (
 
 // ImmediateDeletionOptions returns metav1.DeleteOptions specifying
 // that the caller requires immediate foreground deletion semantics.
-func ImmediateDeletionOptions(propagation metav1.DeletionPropagation) *metav1.DeleteOptions {
-	return &metav1.DeleteOptions{
+func ImmediateDeletionOptions(propagation metav1.DeletionPropagation) metav1.DeleteOptions {
+	return metav1.DeleteOptions{
 		GracePeriodSeconds: pointer.Int64Ptr(0),
 		PropagationPolicy:  &propagation,
 	}

@@ -15,6 +15,7 @@
 package driver
 
 import (
+	"context"
 	"errors"
 	"log"
 
@@ -53,7 +54,7 @@ func (k *KubeClient) SetUserAgent(ua string) {
 
 // NamespaceExists tests whether the given namespace is present.
 func (k *KubeClient) NamespaceExists(nsName string) (bool, error) {
-	_, err := k.Client.CoreV1().Namespaces().Get(nsName, metav1.GetOptions{})
+	_, err := k.Client.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
 	switch {
 	case err == nil:
 		return true, nil
@@ -160,7 +161,7 @@ func (k *KubeClient) SelectObjects(kind schema.GroupVersionKind, selector labels
 
 	// TODO(jpeach): set a more reasonable limit and implement Continue.
 	list, err := k.Dynamic.Resource(r).Namespace(metav1.NamespaceAll).List(
-		metav1.ListOptions{LabelSelector: selector.String(), Limit: 10000})
+		context.Background(), metav1.ListOptions{LabelSelector: selector.String(), Limit: 10000})
 
 	if apierrors.IsNotFound(err) {
 		return results, nil
@@ -243,7 +244,7 @@ func (k *KubeClient) SelectObjectsByLabel(label string, value string) ([]*unstru
 	for _, r := range resources {
 		// TODO(jpeach): set a more reasonable limit and implement Continue.
 		list, err := k.Dynamic.Resource(r).Namespace(metav1.NamespaceAll).List(
-			metav1.ListOptions{LabelSelector: selector, Limit: 10000})
+			context.Background(), metav1.ListOptions{LabelSelector: selector, Limit: 10000})
 
 		if apierrors.IsNotFound(err) {
 			continue

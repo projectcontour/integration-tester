@@ -107,7 +107,7 @@ func ReadDocument(in io.Reader) (*Document, error) {
 
 // ReadFile reads a Document from the given file path.
 func ReadFile(filePath string) (*Document, error) {
-	fh, err := os.OpenFile(filePath, os.O_RDONLY, 0)
+	fh, err := os.OpenFile(filePath, os.O_RDONLY, 0) //nolint:gosec
 	if err != nil {
 		return nil, err
 	}
