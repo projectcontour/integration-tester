@@ -110,6 +110,96 @@ creates the stub and will update its copy when it changes.
 
 ## Writing Rego Tests
 
+## Rego test rules
+
+In a Rego fragment,  `integration-tester` evaluates all the rules
+named `skip`, `error`, `fatal` or `check`. Other names can be used
+if you prefix the rule name with one of the special result tokens,
+followed by an underscore, e.g. `error_if_not_present`.
+
+Any `skip`, `error` or `fatal` rules that evaluate to true have the
+corresponding test result. `skip` results cause the remainder of
+the test to be passed over, but it will not report an overall
+failure. `error` results cause a specific check to fail. The test
+will continue, and other errors may be detected.  `fatal` results
+cause the test to fail and end immediately.
+
+A `check` result is one that can cause a check to either pass or
+fail. For example:
+
+```Rego
+import data.builtin.results
+
+check_it_is_time[r] {
+    time.now_ns() > 10
+    r := results.Pass("it is time")
+}
+```
+
+Checks are useful for building libraries of tests that can simply
+emit results without needing to depend on the naming rules of the
+top-level query. The `data.builtin.results` package contains a set
+of helper functions that make constructing results easier:
+
+| Name | Args | Description |
+| -- | -- | -- |
+| Pass(msg) | *string* | Construct a `pass` result with the message string. |
+| Passf(msg, args) | *string*, *array* | Construct a `pass` result with a `sprintf` format string. |
+| Skip(msg) | *string* | Construct a `skip` result with the message string. |
+| Skipf(msg, args) | *string*, *array* | Construct a `skip` result with a `sprintf` format string. |
+| Error(msg) | *string* | Construct a `error` result with the message string. |
+| Errorf(msg, args) | *string*, *array* | Construct a `error` result with a `sprintf` format string. |
+| Fatal(msg) | *string* | Construct a `fatal` result with the message string. |
+| Fatal(msg, args) | *string*, *array* | Construct a `fatal` result with a `sprintf` format string. |
+
+## Rego rule results
+
+`integration-tester` supports a number of result formats for Rego
+rules. The recommended format is that used by the `data.builtin.result`
+module, which is a map with well-known keys `result` and `msg`:
+
+```
+{
+    "result": "Pass",
+    "msg": "This test passes",
+}
+```
+
+`integration-tester` also supports the following result types:
+
+* **boolean:** The rule triggers with no additional information.
+* **string:** The rule triggers and the string result gives an additional reason
+* **string array:** The rule triggers and the elements of the string result are joined with `\n`
+* **map with `msg` key:** The rule triggers and the string result comes from the `msg` key
+
+This Rego sample demonstrates the supported result formats:
+
+```
+error_if_true = e {
+    e := true
+}
+
+error_with_message[m] {
+    m = "message 1"
+}
+
+error_with_message[m] {
+    m := "message 2"
+}
+
+error_with_long_message[m] {
+    m := [
+        "line one",
+        "line 2",
+    ]
+}
+
+fatal_if_message[{"msg": m}] {
+    m := "fatal check"
+}
+
+```
+
 ## Skipping tests
 
 If there is a skip rule (any rule whose name begins with the string

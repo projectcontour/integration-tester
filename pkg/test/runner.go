@@ -522,15 +522,16 @@ func runCheck(
 			return nil, err
 		}
 
-		if len(results) == 0 {
-			return nil, nil
-		}
-
 		// If we have a skip result, skip now rather than
 		// waiting for the timeout. It makes no sense to wait,
-		// since skipping should be a permenent status.
+		// since skipping should be a permanent status.
 		if result.Contains(results, result.SeveritySkip) {
 			return results, err
+		}
+
+		results = result.OnlyFailed(results)
+		if len(results) == 0 {
+			return nil, nil
 		}
 
 		time.Sleep(time.Millisecond * 500)

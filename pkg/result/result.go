@@ -34,6 +34,9 @@ const SeverityFatal Severity = "Fatal"
 // SeveritySkip ...
 const SeveritySkip Severity = "Skip"
 
+// SeverityPass explicitly marks a result as recording a successful check.
+const SeverityPass Severity = "Pass"
+
 // Result ...
 type Result struct {
 	Severity  Severity
@@ -99,4 +102,18 @@ func Contains(results []Result, wanted Severity) bool {
 	}
 
 	return false
+}
+
+// OnlyFailed returns a copy of results that only includes failed
+// results.
+func OnlyFailed(results []Result) []Result {
+	var failed []Result
+
+	for _, r := range results {
+		if r.IsFailed() {
+			failed = append(failed, r)
+		}
+	}
+
+	return failed
 }
