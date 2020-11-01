@@ -56,9 +56,13 @@ generate: pkg/builtin/assets.go
 pkg/builtin/assets.go: $(wildcard pkg/builtin/*.rego) $(wildcard pkg/builtin/*.yaml)
 	./hack/go-bindata.sh -pkg builtin -o $@ $^
 
+.PHONY: generate-docs
+generate-docs:
+	@cd doc && $(GO) run -mod=readonly ../hack/make-cmd-docs
+
 .PHONY: check
 check: ## Run tests
-check: check-tests check-lint
+check: check-tests check-lint check-docs
 
 .PHONY: check-tests
 check-tests: ## Run tests
@@ -78,6 +82,13 @@ check-lint: generate
 			--env GO111MODULE \
 			golangci/golangci-lint:v1.23.7 \
 			golangci-lint run --exclude-use-default=false ; \
+	fi
+
+.PHONY: check-docs
+check-docs: generate-docs
+	@if [ "$$(git status --porcelain ./doc/* | wc -l)" != "0" ]; then \
+		echo "Run \"make generate\" and commit any changes in ./docs/"; \
+		exit 1; \
 	fi
 
 .PHONY: clean
