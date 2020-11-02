@@ -457,23 +457,10 @@ func applyObject(k *driver.KubeClient,
 // compileDocument compiles all the Rego policies in the test document.
 func compileDocument(d *doc.Document, modules []*ast.Module) (*ast.Compiler, error) {
 	compiler := ast.NewCompiler()
-	modmap := map[string]*ast.Module{}
 
-	// Compile all the built-in Rego files. We require that
-	// each file has a unique module name.
-	for _, a := range builtin.AssetNames() {
-		if !strings.HasSuffix(a, ".rego") {
-			continue
-		}
-
-		str := string(must.Bytes(builtin.Asset(a)))
-		m := must.Module(ast.ParseModule(a, str))
-
-		if _, ok := modmap[a]; ok {
-			return nil, fmt.Errorf("duplicate builtin Rego module asset %q", a)
-		}
-
-		modmap[a] = m
+	modmap, err := builtin.CompileModules()
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile builtin modules: %w", err)
 	}
 
 	// Add all the modules that the user specified on the commandline.

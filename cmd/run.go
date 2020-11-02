@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectcontour/integration-tester/pkg/builtin"
 	"github.com/projectcontour/integration-tester/pkg/doc"
 	"github.com/projectcontour/integration-tester/pkg/driver"
 	"github.com/projectcontour/integration-tester/pkg/fixture"
@@ -234,11 +235,25 @@ func loadPolicies(paths []string) (map[string]*ast.Module, error) {
 		}
 	}
 
+	// Policy modules can depend on builtins.
+	builtins, err := builtin.CompileModules()
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile builtin modules: %w", err)
+	}
+
+	merged := map[string]*ast.Module{}
+	for k, m := range builtins {
+		merged[k] = m
+	}
+	for k, m := range modules {
+		merged[k] = m
+	}
+
 	// Verify that the policies compile. We compile them all at
 	// the end so that the compiler can resolve any dependencies.
 	compiler := ast.NewCompiler()
-	if compiler.Compile(modules); compiler.Failed() {
-		return modules, compiler.Errors
+	if compiler.Compile(merged); compiler.Failed() {
+		return nil, compiler.Errors
 	}
 
 	return modules, nil
