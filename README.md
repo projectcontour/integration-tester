@@ -12,7 +12,7 @@ separated by the YAML document separator, `---`.
 
 ## Fixtures
 
-The `run` command takes a `--fixtures` flag. This flag can be used
+The [`run`][1] command takes a `--fixtures` flag. This flag can be used
 multiple times and accepts a file or directory path. In either case, it
 expects all the given files to contain Kubernetes objects in YAML format.
 
@@ -31,7 +31,6 @@ In many cases, a test may need multiple instances of a fixture. To
 support this, a fixture can be applied with a new name. Note that the
 rename supports YAML anchors, which can be used to ensure that labels
 and other fields are also updated appropriately.
-
 
 ```yaml
 apiVersion: apps/v1
@@ -218,3 +217,5 @@ converge to a non-skipping state.
 - https://www.openpolicyagent.org/docs/latest/policy-language/
 - https://www.openpolicyagent.org/docs/latest/policy-reference/
 - https://github.com/kubernetes/community/blob/master/contributors/devel/sig-api-machinery/strategic-merge-patch.md
+
+[1]: ./doc/integration-tester_run.md

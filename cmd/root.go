@@ -76,13 +76,16 @@ func CommandWithDefaults(c *cobra.Command) *cobra.Command {
 func NewRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   version.Progname,
-		Short: "A brief description of your application",
-		Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+		Short: "Kubernetes integration test driver",
+		Long: `integration-tester is a Kubernetes test driver that helps run
+integration tests for Kubernetes controllers.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Test documents are strucured as a sequence of YAML and Rego fragments
+separated by the YAML document separator, "---". integration-tester
+applies each YAML update (with an optional Rego test), and evaluates
+each Rego fragment to check test assertions.
+
+`,
 		Version: fmt.Sprintf("%s/%s, built %s", version.Version, version.Sha, version.BuildDate),
 	}
 
