@@ -68,6 +68,8 @@ func (t *TapWriter) NewDocument(desc string) Closer {
 
 	t.docCount++
 	t.stepCount = 0
+	t.stepErrors = nil
+	t.stepSkips = nil
 
 	return CloserFunc(func() {
 		// NOTE, it's a closed interval.
