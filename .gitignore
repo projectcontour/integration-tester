@@ -19,3 +19,4 @@ vendor/
 
 integration-tester
 pkg/builtin/assets.go
+dist/
